@@ -16,6 +16,8 @@ class CreateCoreApiDocsTable extends Migration
         Schema::create('core_api_docs', function (Blueprint $table) {
             $table->increments('id');
             $table->string('identifier');
+            $table->string('title');
+            $table->text('description');
             $table->string('method');
             $table->string('uri');
             $table->json("parameters")->nullable();

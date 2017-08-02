@@ -2,16 +2,15 @@
 
 namespace DeveoDK\CoreApiDocGenerator\Commands;
 
+use DeveoDK\CoreApiDocGenerator\Models\CoreApiDoc;
 use ReflectionClass;
 use Illuminate\Console\Command;
 use Mpociot\Reflection\DocBlock;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Route;
-use Mpociot\Documentarian\Documentarian;
-use DeveoDK\CoreApiDocGenerator\Adapters\Postman\CollectionWriter;
-use DeveoDK\CoreApiDocGenerator\Adapters\Generators\DingoGenerator;
-use DeveoDK\CoreApiDocGenerator\Adapters\Generators\LaravelGenerator;
-use DeveoDK\CoreApiDocGenerator\Adapters\Generators\AbstractGenerator;
+use DeveoDK\CoreApiDocGenerator\Postman\CollectionWriter;
+use DeveoDK\CoreApiDocGenerator\Generators\LaravelGenerator;
+use DeveoDK\CoreApiDocGenerator\Generators\AbstractGenerator;
 
 class GenerateDocumentation extends Command
 {
@@ -20,7 +19,7 @@ class GenerateDocumentation extends Command
      *
      * @var string
      */
-    protected $signature = 'api:generate 
+    protected $signature = 'core:generate 
                             {--output=public/docs : The output path for the generated documentation}
                             {--routePrefix= : The route prefix to use for generation}
                             {--routes=* : The route names to use for generation}
@@ -28,7 +27,6 @@ class GenerateDocumentation extends Command
                             {--noResponseCalls : Disable API response calls}
                             {--noPostmanCollection : Disable Postman collection creation}
                             {--useMiddlewares : Use all configured route middlewares}
-                            {--actAsUserId= : The user ID to use for API response calls}
                             {--router=laravel : The router to be used (Laravel or Dingo)}
                             {--force : Force rewriting of existing routes}
                             {--bindings= : Route Model Bindings}
@@ -40,12 +38,11 @@ class GenerateDocumentation extends Command
      *
      * @var string
      */
-    protected $description = 'Generate your API documentation from existing Laravel routes.';
+    protected $description = 'Generate Deveo Core API documentation from existing Laravel routes.';
 
     /**
      * Create a new command instance.
      *
-     * @return void
      */
     public function __construct()
     {
@@ -64,8 +61,6 @@ class GenerateDocumentation extends Command
         $allowedRoutes = $this->option('routes');
         $routePrefix = $this->option('routePrefix');
         $middleware = $this->option('middleware');
-
-        $this->setUserToBeImpersonated($this->option('actAsUserId'));
 
         if ($routePrefix === null && ! count($allowedRoutes) && $middleware === null) {
             $this->error(
@@ -94,27 +89,27 @@ class GenerateDocumentation extends Command
     private function saveDocumentation($parsedRoutes)
     {
         foreach (json_decode($parsedRoutes->get('general')) as $item) {
-            dd($item);
+            if ($item->title !== '') {
+            }
+            if ($apiDocExistingEntry = CoreApiDoc::where('identifier', '=', $item->id)->first()) {
+                $apiDocExistingEntry->method = $item->methods[0];
+                $apiDocExistingEntry->uri = $item->uri;
+                $apiDocExistingEntry->title = $item->title;
+                $apiDocExistingEntry->description = $item->description;
+                $apiDocExistingEntry->parameters = json_encode($item->parameters);
+                $apiDocExistingEntry->save();
+                continue;
+            }
+            $apiDocEntry = new CoreApiDoc();
+            $apiDocEntry->identifier = $item->id;
+            $apiDocEntry->method = $item->methods[0];
+            $apiDocEntry->title = $item->title;
+            $apiDocEntry->description = $item->description;
+            $apiDocEntry->uri = $item->uri;
+            $apiDocEntry->parameters = json_encode($item->parameters);
+            $apiDocEntry->save();
         }
         $postManCollection = $this->generatePostmanCollection($parsedRoutes);
-    }
-
-    /**
-     * @param $actAs
-     */
-    private function setUserToBeImpersonated($actAs)
-    {
-        if (! empty($actAs)) {
-            if (version_compare($this->laravel->version(), '5.2.0', '<')) {
-                $userModel = config('auth.model');
-                $user = $userModel::find((int) $actAs);
-                $this->laravel['auth']->setUser($user);
-            } else {
-                $userModel = config('auth.providers.users.model');
-                $user = $userModel::find((int) $actAs);
-                $this->laravel['auth']->guard()->setUser($user);
-            }
-        }
     }
 
     /**
@@ -145,10 +140,11 @@ class GenerateDocumentation extends Command
     }
 
     /**
-     * @param AbstractGenerator  $generator
+     * @param AbstractGenerator $generator
      * @param $allowedRoutes
      * @param $routePrefix
      *
+     * @param $middleware
      * @return array
      */
     private function processLaravelRoutes(AbstractGenerator $generator, $allowedRoutes, $routePrefix, $middleware)
@@ -157,6 +153,7 @@ class GenerateDocumentation extends Command
         $routes = $this->getRoutes();
         $bindings = $this->getBindings();
         $parsedRoutes = [];
+
         foreach ($routes as $route) {
             if (in_array($route->getName(), $allowedRoutes)
                 || str_is($routePrefix, $generator->getUri($route)) || in_array($middleware, $route->middleware())) {
@@ -189,7 +186,6 @@ class GenerateDocumentation extends Command
 
     /**
      * @param $route
-     *
      * @return bool
      */
     private function isRouteVisibleForDocumentation($route)

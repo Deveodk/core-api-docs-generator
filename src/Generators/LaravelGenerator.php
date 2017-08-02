@@ -70,7 +70,7 @@ class LaravelGenerator extends AbstractGenerator
             'description' => $routeDescription['long'],
             'methods' => $this->getMethods($route),
             'uri' => $this->getUri($route),
-            'parameters' => [],
+            'parameters' => $routeDescription['param'],
             'response' => $content,
         ], $routeAction, $bindings);
     }

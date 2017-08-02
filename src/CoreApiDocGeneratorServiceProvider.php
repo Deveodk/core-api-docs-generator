@@ -29,17 +29,18 @@ class CoreApiDocGeneratorServiceProvider extends ServiceProvider
      */
     public function register()
     {
-        $this->app->singleton('apidoc.generate', function () {
+        $this->app->singleton('coreapidoc.generate', function () {
             return new GenerateDocumentation();
         });
-        $this->app->singleton('apidoc.update', function () {
+        $this->app->singleton('coreapidoc.update', function () {
             return new UpdateDocumentation();
         });
-        dd(__DIR__ . '/../../database/migrations');
         $this->loadMigrationsFrom(__DIR__ . '/../database/migrations');
+        $this->loadRoutesFrom(__DIR__  . '/routes.php');
+
         $this->commands([
-            'apidoc.generate',
-            'apidoc.update',
+            'coreapidoc.generate',
+            'coreapidoc.update',
         ]);
     }
 

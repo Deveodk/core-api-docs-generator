@@ -3,6 +3,8 @@
 namespace DeveoDK\CoreApiDocGenerator\Generators;
 
 use Faker\Factory;
+use Illuminate\Support\Collection;
+use Mpociot\Reflection\DocBlock\Tag\ParamTag;
 use ReflectionClass;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Str;
@@ -117,7 +119,7 @@ abstract class AbstractGenerator
     /**
      * @param  \Illuminate\Routing\Route  $route
      *
-     * @return string
+     * @return array
      */
     protected function getRouteDescription($route)
     {
@@ -129,9 +131,32 @@ abstract class AbstractGenerator
         $phpdoc = new DocBlock($comment);
 
         return [
+            'param' => $this->getTagsArray($phpdoc->getTags()),
             'short' => $phpdoc->getShortDescription(),
             'long' => $phpdoc->getLongDescription()->getContents(),
         ];
+    }
+
+    protected function getTagsArray($tags)
+    {
+        $collection = new Collection();
+        foreach ($tags as $tag) {
+            if ($tag instanceof ParamTag) {
+                $variable = str_replace('$', '', $tag->getVariableName());
+                $array = [
+                    'type' => '',
+                    'value' => '',
+                    'default' => '',
+                    'required' => '',
+                    'description' => ''
+                ];
+                $collection->put($variable, $array);
+            }
+        }
+        /*if (!$collection->isEmpty()) {
+            dd($collection);
+        }*/
+        return $collection;
     }
 
     /**

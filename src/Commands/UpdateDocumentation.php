@@ -12,7 +12,7 @@ class UpdateDocumentation extends Command
      *
      * @var string
      */
-    protected $signature = 'api:update 
+    protected $signature = 'core:update 
                             {--location=public/docs : The documentation location}
     ';
 
